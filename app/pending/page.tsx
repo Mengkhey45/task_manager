@@ -71,22 +71,38 @@ export default function PendingTasks() {
     setIsModalOpen(true)
   }
 
-  const handleSave = (taskData: any) => {
-    if (selectedTask) {
-      updateTask(selectedTask.id, taskData)
-    } else {
-      addTask({
-        title: taskData.title,
-        description: taskData.description || "",
-        priority: taskData.priority || "Low",
-        dueDate: taskData.dueDate,
-        assignee: taskData.assignee,
-        status: "pending",
+const handleSave = async (taskData: any) => {
+  if (selectedTask) {
+    updateTask(selectedTask.id, taskData)
+  } else {
+    addTask({
+      title: taskData.title,
+      description: taskData.description || "",
+      priority: taskData.priority || "Low",
+      dueDate: taskData.dueDate,
+      assignee: taskData.assignee,
+      status: "pending",
+    })
+
+    // Get the assigned member's email from members store
+    const assignedMember = members.find((m) => m.name === taskData.assignee)
+
+    if (assignedMember?.email) {
+      await fetch("/api/send-task-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: taskData.title,
+          description: taskData.description,
+          assigneeEmail: assignedMember.email,
+          dueDate: taskData.dueDate,
+        }),
       })
     }
-    setSelectedTask(null)
-    setIsModalOpen(false)
   }
+  setSelectedTask(null)
+  setIsModalOpen(false)
+}
 
   const handleDelete = (id: string) => {
     updateTask(id, { status: "trash" })

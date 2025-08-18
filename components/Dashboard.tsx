@@ -1,5 +1,6 @@
 "use client"
 
+import { useTeamStore } from "../store/useTeamStore" // add this import at top
 import { useState } from "react"
 import {
   FiList,
@@ -37,18 +38,43 @@ export default function Dashboard() {
 
   const pendingTasks = tasks.filter((task) => task.status === "pending").slice(0, 5)
 
-  const handleSave = (taskData: any) => {
-    if (editingTask) {
-      updateTask(editingTask.id, taskData)
-    } else {
-      addTask({
-        ...taskData,
-        status: "pending",
-      })
+
+
+const { members } = useTeamStore() // inside your Dashboard component
+
+const handleSave = async (taskData: any) => {
+  if (editingTask) {
+    updateTask(editingTask.id, taskData);
+  } else {
+    addTask({
+      ...taskData,
+      status: "pending",
+    });
+
+    // Find the assigned member's email
+    const assignedMember = members.find((m) => m.name === taskData.assignee);
+    if (assignedMember?.email) {
+      try {
+        await fetch("/api/send-task-email", { // match PendingTasks endpoint
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: taskData.title,
+            description: taskData.description,
+            assigneeEmail: assignedMember.email,
+            dueDate: taskData.dueDate,
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to send email:", error);
+      }
     }
-    setIsModalOpen(false)
-    setEditingTask(null)
   }
+
+  setIsModalOpen(false);
+  setEditingTask(null);
+};
+
 
   const handleDelete = (id: string) => {
     updateTask(id, { status: "trash" })

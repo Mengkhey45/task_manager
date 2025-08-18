@@ -127,6 +127,7 @@ export default function CompletedTasks() {
                     >
                       Archive
                     </button>
+                    
                   </div>
                 </div>
               </div>
