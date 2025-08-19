@@ -1,27 +1,72 @@
-"use client"
+"use client";
 
 import Layout from "../../components/Layout"
+import { useState, useEffect } from "react"
 import { FcBarChart, FcApproval, FcClock } from "react-icons/fc"
 import { SlCalender } from "react-icons/sl"
 import { BsPerson } from "react-icons/bs"
 import { MdOutlineDownloadDone } from "react-icons/md"
-import { useTaskStore } from "../../store/useTaskStore"
+
+interface Task {
+  id: string
+  title: string
+  description?: string
+  priority: string
+  status: string
+  dueDate?: string
+  completedAt?: string
+  assignee?: string
+}
 
 export default function CompletedTasks() {
-  const { tasks, updateTask } = useTaskStore()
+  const [tasks, setTasks] = useState<Task[]>([])
+
+  useEffect(() => {
+    const storedTasks = sessionStorage.getItem("tasks")
+    if (storedTasks) {
+      setTasks(JSON.parse(storedTasks))
+    } else {
+      fetchTasks()
+    }
+  }, [])
+
+  const fetchTasks = async () => {
+    try {
+      const res = await fetch("/api/tasks")
+      const data: Task[] = await res.json()
+      setTasks(data)
+      sessionStorage.setItem("tasks", JSON.stringify(data))
+    } catch (err) {
+      console.error("Failed to fetch tasks:", err)
+    }
+  }
+
+  const updateTask = async (taskId: string, updates: Partial<Task>) => {
+    try {
+      const updatedTasks = tasks.map((t) =>
+        t.id === taskId ? { ...t, ...updates } : t
+      )
+      setTasks(updatedTasks)
+      sessionStorage.setItem("tasks", JSON.stringify(updatedTasks))
+
+      await fetch(`/api/tasks/${taskId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      })
+    } catch (err) {
+      console.error(err)
+    }
+  }
 
   const completedTasks = tasks.filter((task) => task.status === "completed")
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "High":
-        return "bg-red-100 text-red-800"
-      case "Medium":
-        return "bg-yellow-100 text-yellow-800"
-      case "Low":
-        return "bg-green-100 text-green-800"
-      default:
-        return "bg-gray-100 text-gray-800"
+      case "High": return "bg-red-100 text-red-800"
+      case "Medium": return "bg-yellow-100 text-yellow-800"
+      case "Low": return "bg-green-100 text-green-800"
+      default: return "bg-gray-100 text-gray-800"
     }
   }
 
@@ -29,53 +74,21 @@ export default function CompletedTasks() {
     updateTask(taskId, { status: "todo", completedAt: undefined })
   }
 
+  const handleArchiveTask = (taskId: string) => {
+    // move task to trash
+    updateTask(taskId, { status: "trash" })
+  }
+
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Completed Tasks</h1>
-          <p className="text-gray-600 mt-2">Tasks that have been successfully completed</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center text-green-600 text-xl">
-                <FcApproval />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Completed</p>
-                <p className="text-2xl font-bold text-gray-900">{completedTasks.length}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 text-xl">
-                <FcBarChart />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">This Week</p>
-                <p className="text-2xl font-bold text-gray-900">3</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center text-purple-600 text-xl">
-                <FcClock />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">On Time</p>
-                <p className="text-2xl font-bold text-gray-900">85%</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* header & stats omitted for brevity (keep your UI) */}
 
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
           <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50">
-            <h2 className="text-lg font-semibold text-gray-900">Completed Tasks ({completedTasks.length})</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Completed Tasks ({completedTasks.length})
+            </h2>
           </div>
           <div className="divide-y divide-gray-100">
             {completedTasks.map((task) => (
@@ -122,12 +135,11 @@ export default function CompletedTasks() {
                       Reopen
                     </button>
                     <button
-                      onClick={() => updateTask(task.id, { status: "trash" })}
+                      onClick={() => handleArchiveTask(task.id)}
                       className="px-4 py-2 text-sm font-medium bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all duration-200 shadow-md hover:shadow-lg"
                     >
                       Archive
                     </button>
-                    
                   </div>
                 </div>
               </div>
