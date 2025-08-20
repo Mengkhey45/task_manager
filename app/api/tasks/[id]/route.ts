@@ -1,11 +1,6 @@
+// app/api/tasks/[id]/route.ts
 import { NextResponse } from "next/server";
-import { PrismaClient } from "../../../../generated/prisma";
-
-let prisma: PrismaClient;
-if (!(global as any).prisma) {
-  (global as any).prisma = new PrismaClient();
-}
-prisma = (global as any).prisma;
+import { prisma } from '../../../../lib/prisma'; // use singleton client
 
 // GET one task by ID
 export async function GET(

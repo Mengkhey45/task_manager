@@ -1,14 +1,6 @@
-// app/api/team/route.ts
+
 import { NextResponse } from "next/server";
-import { PrismaClient } from "../../../generated/prisma"; // adjust relative path
-
-// Avoid creating multiple instances in dev
-let prisma: PrismaClient;
-
-if (!global.prisma) {
-  global.prisma = new PrismaClient();
-}
-prisma = global.prisma;
+import { prisma } from '../../../lib/prisma'; // use singleton Prisma client
 
 export async function GET() {
   try {
