@@ -69,12 +69,22 @@ const handleDeleteTask = async (taskId: number) => {
       body: JSON.stringify({ status: "trash" }),
     });
 
-    // Update local state immediately for UX
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    // Update local state
+    const updatedTasks = tasks.map((t) =>
+      t.id === taskId ? { ...t, status: "trash" } : t
+    );
+    setTasks(updatedTasks);
+
+    // Update sessionStorage
+    sessionStorage.setItem("tasks", JSON.stringify(updatedTasks));
+
+    // Notify other pages (Trash page will update automatically)
+    window.dispatchEvent(new Event("tasksUpdated"));
   } catch (err) {
     console.error(err);
   }
 };
+
 
 
   const getPriorityStyles = (priority: string) => {

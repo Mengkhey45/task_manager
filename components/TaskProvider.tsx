@@ -1,99 +1,91 @@
-"use client"
+"use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-interface Task {
-  id: number
-  title: string
-  description: string
-  priority: "Low" | "Medium" | "High"
-  dueDate: string
-  assignee: string
-  status: "pending" | "todo" | "completed"
+export interface Task {
+  id: number;
+  title: string;
+  description?: string;
+  priority: string;
+  status: "pending" | "todo" | "completed";
+  dueDate?: string;
+  assigneeId?: number;
 }
 
 interface TaskContextType {
-  tasks: Task[]
-  addTask: (task: Omit<Task, "id">) => void
-  updateTask: (id: number, updates: Partial<Task>) => void
-  deleteTask: (id: number) => void
-  moveTask: (id: number, newStatus: "pending" | "todo" | "completed") => void
+  tasks: Task[];
+  addTask: (task: Omit<Task, "id">) => Promise<void>;
+  updateTask: (id: number, updates: Partial<Task>) => Promise<void>;
+  deleteTask: (id: number) => Promise<void>;
+  fetchTasks: () => Promise<void>;
 }
 
-const TaskContext = createContext<TaskContextType | undefined>(undefined)
-
-const initialTasks: Task[] = [
-  {
-    id: 1,
-    title: "Review quarterly reports",
-    description: "Analyze and provide feedback on Q4 performance metrics",
-    priority: "High",
-    dueDate: "2024-01-15",
-    assignee: "John Doe",
-    status: "pending",
-  },
-  {
-    id: 2,
-    title: "Design user interface mockups",
-    description: "Create wireframes and mockups for the new feature",
-    priority: "High",
-    dueDate: "2024-01-25",
-    assignee: "Sarah Wilson",
-    status: "todo",
-  },
-  {
-    id: 3,
-    title: "Update website content",
-    description: "Refresh homepage and product pages with new information",
-    priority: "Medium",
-    dueDate: "2024-01-20",
-    assignee: "Jane Smith",
-    status: "pending",
-  },
-]
+const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
 export function TaskProvider({ children }: { children: ReactNode }) {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks)
+  const [tasks, setTasks] = useState<Task[]>([]);
 
-  const addTask = (taskData: Omit<Task, "id">) => {
-    const newTask = {
-      ...taskData,
-      id: Date.now(),
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  const fetchTasks = async () => {
+    try {
+      const res = await fetch("/api/tasks");
+      const data = await res.json();
+      setTasks(data);
+    } catch (err) {
+      console.error("Failed to fetch tasks", err);
     }
-    setTasks((prev) => [...prev, newTask])
-  }
+  };
 
-  const updateTask = (id: number, updates: Partial<Task>) => {
-    setTasks((prev) => prev.map((task) => (task.id === id ? { ...task, ...updates } : task)))
-  }
+  const addTask = async (task: Omit<Task, "id">) => {
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(task),
+      });
+      const newTask = await res.json();
+      setTasks((prev) => [newTask, ...prev]);
+    } catch (err) {
+      console.error("Failed to add task", err);
+    }
+  };
 
-  const deleteTask = (id: number) => {
-    setTasks((prev) => prev.filter((task) => task.id !== id))
-  }
+  const updateTask = async (id: number, updates: Partial<Task>) => {
+    try {
+      await fetch(`/api/tasks/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      setTasks((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
+      );
+    } catch (err) {
+      console.error("Failed to update task", err);
+    }
+  };
 
-  const moveTask = (id: number, newStatus: "pending" | "todo" | "completed") => {
-    setTasks((prev) => prev.map((task) => (task.id === id ? { ...task, status: newStatus } : task)))
-  }
+  const deleteTask = async (id: number) => {
+    try {
+      await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+    } catch (err) {
+      console.error("Failed to delete task", err);
+    }
+  };
 
   return (
-    <TaskContext.Provider
-      value={{
-        tasks,
-        addTask,
-        updateTask,
-        deleteTask,
-        moveTask,
-      }}
-    >
+    <TaskContext.Provider value={{ tasks, addTask, updateTask, deleteTask, fetchTasks }}>
       {children}
     </TaskContext.Provider>
-  )
+  );
 }
 
 export function useTaskContext() {
-  const context = useContext(TaskContext)
-  if (context === undefined) {
-    throw new Error("useTaskContext must be used within a TaskProvider")
-  }
-  return context
+  const context = useContext(TaskContext);
+  if (!context) throw new Error("useTaskContext must be used within a TaskProvider");
+  return context;
 }

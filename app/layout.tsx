@@ -1,24 +1,20 @@
-import type React from "react"
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import "./globals.css"
+"use client";
 
-const inter = Inter({ subsets: ["latin"] })
+import type { ReactNode } from "react";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { TaskProvider } from "../components/taskProvider";
 
-export const metadata: Metadata = {
-  title: "TaskFlow - Task Management",
-  description: "Simple and efficient task management application",
-    generator: 'v0.app'
-}
+const inter = Inter({ subsets: ["latin"] });
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <TaskProvider>
+          {children}
+        </TaskProvider>
+      </body>
     </html>
-  )
+  );
 }
