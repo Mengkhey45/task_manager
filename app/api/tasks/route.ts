@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from '../../../lib/prisma'; // use your singleton client
 
+export const runtime = 'nodejs';
 
 // let prisma: PrismaClient;
 // if (!(global as any).prisma) {
