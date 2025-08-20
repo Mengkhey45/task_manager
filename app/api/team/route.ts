@@ -11,13 +11,7 @@ export async function GET() {
       include: { tasks: true },
     });
 
-    // Ensure tasks array is never undefined
-    const membersWithTasks = members.map((m) => ({
-      ...m,
-      tasks: m.tasks ?? [],
-    }));
-
-    return NextResponse.json(membersWithTasks);
+    return NextResponse.json(members);
   } catch (err: any) {
     console.error("GET /api/team error:", err);
     return NextResponse.json(
@@ -34,9 +28,10 @@ export async function POST(req: Request) {
 
     const member = await prisma.teamMember.create({
       data: { name, email, role, joinDate: new Date() },
+      include: { tasks: true }, // include tasks even if empty
     });
 
-    return NextResponse.json({ ...member, tasks: [] });
+    return NextResponse.json(member);
   } catch (err: any) {
     console.error("POST /api/team error:", err);
     return NextResponse.json(
@@ -54,9 +49,10 @@ export async function PUT(req: Request) {
     const member = await prisma.teamMember.update({
       where: { id: Number(id) },
       data: updates,
+      include: { tasks: true }, // ✅ FIX: include tasks
     });
 
-    return NextResponse.json({ ...member, tasks: member.tasks ?? [] });
+    return NextResponse.json(member);
   } catch (err: any) {
     console.error("PUT /api/team error:", err);
     return NextResponse.json(
