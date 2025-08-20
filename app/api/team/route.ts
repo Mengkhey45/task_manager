@@ -1,6 +1,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from '../../../lib/prisma'; // use singleton Prisma client
+export const runtime = 'nodejs';
 
 export async function GET() {
   try {
