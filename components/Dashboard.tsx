@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useTeamStore } from "../store/useTeamStore";
 import { FiList, FiCheckSquare, FiCalendar, FiBarChart } from "react-icons/fi";
 import { RiFireLine } from "react-icons/ri";
@@ -20,12 +21,13 @@ const priorityIcons = {
 };
 
 export default function Dashboard() {
+  const router = useRouter();
   const { members } = useTeamStore();
   const [tasks, setTasks] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
 
-  // Fetch tasks from backend or sessionStorage
+  // Fetch tasks
   const fetchTasks = async () => {
     try {
       const res = await fetch("/api/tasks");
@@ -46,59 +48,56 @@ export default function Dashboard() {
     }
   }, []);
 
-const handleSave = async (taskData: any) => {
-  try {
-    const updates = {
-      title: taskData.title,
-      description: taskData.description,
-      priority: taskData.priority,
-      status: taskData.status,
-      assigneeId: taskData.assignee?.id ? Number(taskData.assignee.id) : null,
-      dueDate: taskData.dueDate ? taskData.dueDate : null,
-    };
+  const handleSave = async (taskData: any) => {
+    try {
+      const updates = {
+        title: taskData.title,
+        description: taskData.description,
+        priority: taskData.priority,
+        status: taskData.status,
+        assigneeId: taskData.assignee?.id ? Number(taskData.assignee.id) : null,
+        dueDate: taskData.dueDate ? taskData.dueDate : null,
+      };
 
-    if (editingTask) {
-      // UPDATE existing task
-      await fetch(`/api/tasks/${editingTask.id}`, {
+      if (editingTask) {
+        await fetch(`/api/tasks/${editingTask.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updates),
+        });
+      } else {
+        const res = await fetch("/api/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updates),
+        });
+        const newTask = await res.json();
+        setTasks((prev) => [newTask, ...prev]);
+      }
+
+      setEditingTask(null);
+      setIsModalOpen(false);
+      fetchTasks();
+      window.dispatchEvent(new Event("tasksUpdated"));
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save task");
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await fetch(`/api/tasks/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
+        body: JSON.stringify({ status: "trash" }),
       });
-    } else {
-      // CREATE new task
-      const res = await fetch("/api/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      });
-      const newTask = await res.json();
-      setTasks((prev) => [newTask, ...prev]); // instantly update UI
+      fetchTasks();
+      window.dispatchEvent(new Event("tasksUpdated"));
+    } catch (err) {
+      console.error(err);
     }
-
-    setEditingTask(null);
-    setIsModalOpen(false);
-    fetchTasks(); // refresh from backend
-    window.dispatchEvent(new Event("tasksUpdated")); // notify other pages
-  } catch (err) {
-    console.error(err);
-    alert("Failed to save task");
-  }
-};
-
-const handleDelete = async (id: number) => {
-  try {
-    await fetch(`/api/tasks/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "trash" }), // Move to trash
-    });
-    fetchTasks();
-    window.dispatchEvent(new Event("tasksUpdated")); // notify trash page
-  } catch (err) {
-    console.error(err);
-  }
-};
-
+  };
 
   const pendingTasks = tasks.filter((task) => task.status === "pending").slice(0, 5);
 
@@ -107,8 +106,13 @@ const handleDelete = async (id: number) => {
       {/* Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {overview.map((item) => (
-          <div key={item.label} className="flex flex-col items-center justify-center bg-white rounded-2xl shadow-lg p-6 min-h-[120px]">
-            <div className={`mb-2 w-12 h-12 flex items-center justify-center rounded-full ${item.color} shadow`}>
+          <div
+            key={item.label}
+            className="flex flex-col items-center justify-center bg-white rounded-2xl shadow-lg p-6 min-h-[120px]"
+          >
+            <div
+              className={`mb-2 w-12 h-12 flex items-center justify-center rounded-full ${item.color} shadow`}
+            >
               {item.icon}
             </div>
             <div className="text-3xl font-bold text-gray-800">{tasks.length}</div>
@@ -130,34 +134,50 @@ const handleDelete = async (id: number) => {
         </div>
 
         <div className="space-y-3">
-          {pendingTasks.length === 0 && <div className="text-gray-400 text-center py-4">No pending tasks</div>}
+          {pendingTasks.length === 0 && (
+            <div className="text-gray-400 text-center py-4">No pending tasks</div>
+          )}
 
           {pendingTasks.map((task) => (
             <div
               key={task.id}
               className={`flex flex-col md:flex-row md:items-center justify-between rounded-xl px-4 py-3 ${
-                task.priority === "Low" ? "bg-green-100" : task.priority === "Medium" ? "bg-yellow-100" : "bg-red-100"
-              } shadow-sm hover:shadow-md transition-shadow`}
+                task.priority === "Low"
+                  ? "bg-green-100"
+                  : task.priority === "Medium"
+                  ? "bg-yellow-100"
+                  : "bg-red-100"
+              } shadow-sm hover:shadow-md transition-shadow cursor-pointer`}
+              onClick={() => router.push(`/tasks/${task.id}`)}
             >
               <div className="flex items-center gap-3 flex-1 flex-wrap">
                 <span className="w-8 h-8 rounded-full flex items-center justify-center bg-white shadow">
                   {priorityIcons[task.priority?.toLowerCase() as keyof typeof priorityIcons]}
                 </span>
                 <span className="font-medium text-gray-800">{task.title}</span>
-                <span className="text-xs text-gray-400">{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "No date"}</span>
+                <span className="text-xs text-gray-400">
+                  {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "No date"}
+                </span>
                 <span className="text-xs text-gray-500">{task.assignee?.name || "Unassigned"}</span>
               </div>
 
               <div className="flex gap-2 mt-2 md:mt-0">
                 <button
                   className="text-blue-600 text-xs font-semibold hover:underline"
-                  onClick={() => { setEditingTask(task); setIsModalOpen(true); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingTask(task);
+                    setIsModalOpen(true);
+                  }}
                 >
                   Edit
                 </button>
                 <button
                   className="text-red-600 text-xs font-semibold hover:underline"
-                  onClick={() => handleDelete(task.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(task.id);
+                  }}
                 >
                   Delete
                 </button>
