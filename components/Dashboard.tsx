@@ -248,16 +248,27 @@ export default function Dashboard() {
     try {
       if (!session?.user?.id) return alert("User not authenticated");
 
-      const payload: any = {
-        title: taskData.title,
-        description: taskData.description,
-        priority: taskData.priority,
-        status: taskData.status || "pending",
-        dueDate: taskData.dueDate || null,
-        assigneeType: taskData.assigneeType,
-        assigneeId: taskData.assigneeType === "user" ? taskData.assigneeId : undefined,
-        teamMemberId: taskData.assigneeType === "member" ? taskData.teamMemberId : undefined,
-      };
+      // const payload: any = {
+      //   title: taskData.title,
+      //   description: taskData.description,
+      //   priority: taskData.priority,
+      //   status: taskData.status || "pending",
+      //   dueDate: taskData.dueDate || null,
+      //   assigneeType: taskData.assigneeType,
+      //   assigneeId: taskData.assigneeType === "user" ? taskData.assigneeId : undefined,
+      //   teamMemberId: taskData.assigneeType === "member" ? taskData.teamMemberId : undefined,
+      // };
+      const payload = {
+  title: taskData.title,
+  description: taskData.description,
+  priority: taskData.priority,
+  status: taskData.status || "pending",
+  dueDate: taskData.dueDate || null,
+  assigneeType: taskData.assigneeType,
+  assigneeId: taskData.assigneeType === "user" ? taskData.assigneeId : undefined,
+  teamMemberId: taskData.assigneeType === "member" ? taskData.teamMemberId : undefined,
+};
+
 
       if (editingTask) {
         payload.id = editingTask.id;
