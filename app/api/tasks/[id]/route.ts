@@ -40,12 +40,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+interface TaskUpdateData {
+  title: string;
+  description: string | null;
+  priority: string;
+  status: string;
+  dueDate: Date | null;
+  assigneeId?: number | null;
+  teamMemberId?: number | null;
+}
+
+export async function PUT(
+  req: NextRequest, 
+  { params }: { params: { id: string } }
+) {
   try {
-    const { title, description, priority, status, dueDate, assigneeType, assigneeId, teamMemberId } = await req.json();
+    const { 
+      title, 
+      description, 
+      priority, 
+      status, 
+      dueDate, 
+      assigneeType, 
+      assigneeId, 
+      teamMemberId 
+    } = await req.json();
+    
     const id = Number(params.id);
 
-    const updates: any = {
+    const updates: TaskUpdateData = {
       title,
       description: description || null,
       priority,
@@ -53,7 +76,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       dueDate: dueDate ? new Date(dueDate) : null,
     };
 
-    // Assign to either a User or a TeamMember
     if (assigneeType === "user") {
       updates.assigneeId = assigneeId ? Number(assigneeId) : null;
       updates.teamMemberId = null;
@@ -65,23 +87,36 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const updatedTask = await prisma.task.update({
       where: { id },
       data: updates,
-      include: { assignee: true, teamMember: true, createdBy: true },
+      include: {
+        assignee: true,
+        teamMember: true,
+        createdBy: true
+      },
     });
 
     return NextResponse.json(updatedTask);
   } catch (err) {
     console.error("PUT /api/tasks/[id] error:", err);
-    return NextResponse.json({ error: "Failed to update task" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update task" }, 
+      { status: 500 }
+    );
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(
+  req: NextRequest, 
+  { params }: { params: { id: string } }
+) {
   try {
     const id = Number(params.id);
     await prisma.task.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("DELETE /api/tasks/[id] error:", err);
-    return NextResponse.json({ error: "Failed to delete task" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to delete task" }, 
+      { status: 500 }
+    );
   }
 }

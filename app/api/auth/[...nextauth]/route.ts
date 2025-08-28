@@ -1,17 +1,11 @@
-export const runtime = "nodejs";
-
-
-// app/api/auth/[...nextauth]/route.ts
 import bcrypt from "bcryptjs";
-import NextAuth, { NextAuthOptions } from "next-auth";
+import NextAuth, { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaClient } from "@prisma/client";
+import { PrismaAdapter } from "@auth/prisma-adapter";
+import { prisma } from "@/lib/prisma";
 
-
-
-export const prisma = new PrismaClient();
-
-export const authOptions: NextAuthOptions = {
+const authOptions: AuthOptions = {
+  adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -47,19 +41,17 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   // next-auth config
-cookies: {
-  sessionToken: {
-    name: `next-auth.session-token`,
-    options: {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      secure: process.env.NODE_ENV === "production",
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
     },
   },
-},
-
-
   callbacks: {
     async jwt({ token, user }) {
       if (user) token.id = user.id;
@@ -76,4 +68,8 @@ cookies: {
 };
 
 const handler = NextAuth(authOptions);
-export { handler as GET, handler as POST };
+
+// Only export the handlers, not the configuration
+// Only export the handlers, not the configuration
+export { handler as GET, handler as POST, authOptions };
+

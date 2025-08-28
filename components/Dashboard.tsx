@@ -271,11 +271,11 @@ export default function Dashboard() {
 
 
       if (editingTask) {
-        payload.id = editingTask.id;
+        const payloadWithId = { ...payload, id: editingTask.id };
         await fetch(`/api/tasks/${editingTask.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(payloadWithId),
         });
       } else {
         await fetch("/api/tasks", {
