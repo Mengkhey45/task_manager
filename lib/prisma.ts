@@ -1,13 +1,12 @@
-// lib/prisma.ts
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
-declare global {
-  // Allow global prisma to persist across hot reloads in dev
-  var prisma: PrismaClient | undefined;
-}
+// Prevent multiple instances in development
+const globalForPrisma = global as typeof globalThis & { prisma?: PrismaClient };
 
 export const prisma =
-  global.prisma ??
-  new PrismaClient({ log: ['query', 'error'] });
+  globalForPrisma.prisma ||
+  new PrismaClient({
+    log: ["query", "info", "warn", "error"],
+  });
 
-if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;

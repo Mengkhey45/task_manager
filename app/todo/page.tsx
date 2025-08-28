@@ -6,6 +6,13 @@ import { SlCalender } from "react-icons/sl";
 import { BsPerson, BsCheckCircleFill } from "react-icons/bs";
 import { FiTrash2 } from "react-icons/fi";
 
+interface Member {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+}
+
 interface Task {
   id: number;
   title: string;
@@ -13,79 +20,83 @@ interface Task {
   priority: string;
   status: string;
   dueDate?: string;
-  assignee?: string;
+  assigneeId?: number;
+  assignee?: Member | null;
 }
 
 export default function Todo() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
 
-  // Load tasks from sessionStorage first
+  // Fetch members once
   useEffect(() => {
-    const cached = sessionStorage.getItem("tasks");
+    const cached = sessionStorage.getItem("members");
     if (cached) {
-      setTasks(JSON.parse(cached));
+      setMembers(JSON.parse(cached));
     } else {
-      fetchTasks();
+      fetch("/api/members")
+        .then(res => res.json())
+        .then(data => {
+          setMembers(data);
+          sessionStorage.setItem("members", JSON.stringify(data));
+        })
+        .catch(err => console.error("Failed to fetch members:", err));
     }
   }, []);
 
-  const fetchTasks = async () => {
-    try {
-      const res = await fetch("/api/tasks");
-      const data: Task[] = await res.json();
-      setTasks(data);
-      sessionStorage.setItem("tasks", JSON.stringify(data));
-    } catch (err) {
-      console.error("Failed to fetch tasks:", err);
-    }
-  };
+  // Fetch tasks once and map assignees
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const res = await fetch("/api/tasks");
+        const data: Task[] = await res.json();
+        const mapped = Array.isArray(data)
+          ? data.map(t => ({
+              ...t,
+              assignee: t.assigneeId ? members.find(m => m.id === t.assigneeId) : null,
+            }))
+          : [];
+        setTasks(mapped);
+        sessionStorage.setItem("tasks", JSON.stringify(mapped));
+      } catch (err) {
+        console.error("Failed to fetch tasks:", err);
+        setTasks([]);
+      }
+    };
+    fetchTasks();
+  }, [members]);
 
-  const toggleTaskCompletion = async (task: Task) => {
-    const newStatus = task.status === "todo" ? "completed" : "todo";
-    try {
-      await fetch(`/api/tasks/${task.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
+  // Listen for updates from other pages
+  useEffect(() => {
+    const handler = () => {
+      const stored = sessionStorage.getItem("tasks");
+      if (stored) setTasks(JSON.parse(stored));
+    };
+    window.addEventListener("tasksUpdated", handler);
+    return () => window.removeEventListener("tasksUpdated", handler);
+  }, []);
 
-      // Update tasks locally and cache
-      const updatedTasks = tasks.map((t) =>
-        t.id === task.id ? { ...t, status: newStatus } : t
-      );
+  const updateTask = async (taskId: number, updates: Partial<Task>) => {
+    try {
+      const updatedTasks = tasks.map(t => (t.id === taskId ? { ...t, ...updates } : t));
       setTasks(updatedTasks);
       sessionStorage.setItem("tasks", JSON.stringify(updatedTasks));
+      window.dispatchEvent(new Event("tasksUpdated"));
+
+      await fetch(`/api/tasks/${taskId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
     } catch (err) {
       console.error(err);
     }
   };
 
-const handleDeleteTask = async (taskId: number) => {
-  try {
-    // Update backend: move task to trash
-    await fetch(`/api/tasks/${taskId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "trash" }),
-    });
+  const toggleTaskCompletion = (task: Task) =>
+    updateTask(task.id, { status: task.status === "todo" ? "completed" : "todo" });
 
-    // Update local state
-    const updatedTasks = tasks.map((t) =>
-      t.id === taskId ? { ...t, status: "trash" } : t
-    );
-    setTasks(updatedTasks);
-
-    // Update sessionStorage
-    sessionStorage.setItem("tasks", JSON.stringify(updatedTasks));
-
-    // Notify other pages (Trash page will update automatically)
-    window.dispatchEvent(new Event("tasksUpdated"));
-  } catch (err) {
-    console.error(err);
-  }
-};
-
-
+  const handleDeleteTask = (taskId: number) => updateTask(taskId, { status: "trash" });
 
   const getPriorityStyles = (priority: string) => {
     switch (priority) {
@@ -124,12 +135,13 @@ const handleDeleteTask = async (taskId: number) => {
     }
   };
 
-  const todoTasks = tasks.filter((t) => t.status === "todo");
-  const completedTasks = tasks.filter((t) => t.status === "completed");
+  const todoTasks = tasks.filter(t => t.status === "todo");
+  const completedTasks = tasks.filter(t => t.status === "completed");
 
   return (
     <Layout>
       <div className="space-y-6">
+        {/* Header */}
         <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-indigo-400 via-purple-500 to-pink-500 p-6 text-white">
           <div className="absolute inset-0 bg-black/10"></div>
           <div className="relative flex justify-between items-center">
@@ -158,7 +170,7 @@ const handleDeleteTask = async (taskId: number) => {
             </div>
           ) : (
             <div className="space-y-3">
-              {todoTasks.map((task) => {
+              {todoTasks.map(task => {
                 const styles = getPriorityStyles(task.priority);
                 return (
                   <div
@@ -166,49 +178,45 @@ const handleDeleteTask = async (taskId: number) => {
                     className={`group relative overflow-hidden rounded-xl ${styles.gradient} border ${styles.border} shadow-sm hover:shadow-md ${styles.glow} transition-all duration-300`}
                   >
                     <div className={`absolute left-0 top-0 w-1 h-full ${styles.accent}`}></div>
-                    <div className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start space-x-3 flex-1">
-                          <div className="relative mt-1">
-                            <input
-                              type="checkbox"
-                              checked={task.status === "completed"}
-                              onChange={() => toggleTaskCompletion(task)}
-                              className="h-5 w-5 text-indigo-400 focus:ring-indigo-300 border-2 border-gray-300 rounded transition-all duration-200 hover:scale-110"
-                            />
+                    <div className="p-4 flex justify-between items-start">
+                      <div className="flex items-start space-x-3 flex-1">
+                        <input
+                          type="checkbox"
+                          checked={task.status === "completed"}
+                          onChange={() => toggleTaskCompletion(task)}
+                          className="h-5 w-5 text-indigo-400 focus:ring-indigo-300 border-2 border-gray-300 rounded transition-all duration-200 hover:scale-110"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <h3 className="text-lg font-semibold text-gray-900">{task.title}</h3>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles.badge} shadow-sm`}>
+                              {task.priority}
+                            </span>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <h3 className="text-lg font-semibold text-gray-900">{task.title}</h3>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles.badge} shadow-sm`}>
-                                {task.priority}
-                              </span>
+                          {task.description && (
+                            <p className="text-gray-600 mb-3 text-sm leading-relaxed">{task.description}</p>
+                          )}
+                          <div className="flex items-center space-x-4 text-xs text-gray-500">
+                            <div className="flex items-center space-x-1 bg-white/80 px-2 py-1 rounded">
+                              <SlCalender size={12} />
+                              <span>Due: {task.dueDate || "No date"}</span>
                             </div>
-                            {task.description && (
-                              <p className="text-gray-600 mb-3 text-sm leading-relaxed">{task.description}</p>
-                            )}
-                            <div className="flex items-center space-x-4 text-xs text-gray-500">
-                              <div className="flex items-center space-x-1 bg-white/80 px-2 py-1 rounded">
-                                <SlCalender size={12} />
-                                <span>Due: {task.dueDate}</span>
-                              </div>
-                              <div className="flex items-center space-x-1 bg-white/80 px-2 py-1 rounded">
-                                <BsPerson size={12} />
-                                <span>{task.assignee}</span>
-                              </div>
+                            <div className="flex items-center space-x-1 bg-white/80 px-2 py-1 rounded">
+                              <BsPerson size={12} />
+                              <span>{task.assignee?.name || "Unassigned"}</span>
                             </div>
                           </div>
                         </div>
+                      </div>
 
-                        <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                          <button
-                            onClick={() => handleDeleteTask(task.id)}
-                            className="flex items-center space-x-1 px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-200 shadow-md hover:shadow-lg text-xs font-medium"
-                          >
-                            <FiTrash2 size={12} />
-                            <span>Delete</span>
-                          </button>
-                        </div>
+                      <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+                        <button
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="flex items-center space-x-1 px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-200 shadow-md hover:shadow-lg text-xs font-medium"
+                        >
+                          <FiTrash2 size={12} />
+                          <span>Delete</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -217,35 +225,6 @@ const handleDeleteTask = async (taskId: number) => {
             </div>
           )}
         </div>
-
-        {/* Completed Tasks */}
-        {completedTasks.length > 0 && (
-          <div className="space-y-4">
-            {completedTasks.map((task) => (
-              <div
-                key={task.id}
-                className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-green-100 via-emerald-100 to-teal-100 border border-green-300 shadow-sm hover:shadow-md transition-all duration-300 opacity-75 hover:opacity-90"
-              >
-                <div className="absolute left-0 top-0 w-1 h-full bg-gradient-to-r from-green-500 to-emerald-600"></div>
-                <div className="p-4 flex justify-between items-start">
-                  <div>
-                    <h3 className="text-lg font-semibold line-through text-gray-500">{task.title}</h3>
-                    {task.description && <p className="text-gray-400 line-through text-sm">{task.description}</p>}
-                  </div>
-                  <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                    <button
-                      onClick={() => handleDeleteTask(task.id)}
-                      className="flex items-center space-x-1 px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-200 shadow-md hover:shadow-lg text-xs font-medium"
-                    >
-                      <FiTrash2 size={12} />
-                      <span>Delete</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </Layout>
   );

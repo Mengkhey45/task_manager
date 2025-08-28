@@ -1,6 +1,47 @@
+// generator client {
+//   provider = "prisma-client-js"
+// }
+
+// datasource db {
+//   provider  = "postgresql"
+//   url       = env("DATABASE_URL")
+//   directUrl = env("DIRECT_URL")
+// }
+
+// model User {
+//   id        Int      @id @default(autoincrement())
+//   name      String
+//   email     String   @unique
+//   password  String   // hashed password
+//   createdAt DateTime @default(now())
+
+//   // Tasks this user created
+//   createdTasks Task[] @relation("CreatedTasks")
+
+//   // Tasks assigned to this user
+//   assignedTasks Task[] @relation("AssignedTasks")
+// }
+
+// model Task {
+//   id          Int      @id @default(autoincrement())
+//   title       String
+//   description String?
+//   dueDate     DateTime?
+//   priority    String
+//   status      String   @default("pending")
+//   createdAt   DateTime @default(now())
+
+//   // Who created the task
+//   createdBy   User   @relation("CreatedTasks", fields: [createdById], references: [id])
+//   createdById Int
+
+//   // Who is assigned to this task
+//   assignee    User?  @relation("AssignedTasks", fields: [assigneeId], references: [id])
+//   assigneeId  Int?
+// }
+
 generator client {
   provider = "prisma-client-js"
-
 }
 
 datasource db {
@@ -9,23 +50,55 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model User {
+  id        Int          @id @default(autoincrement())
+  name      String
+  email     String       @unique
+  password  String
+  createdAt DateTime     @default(now())
+
+  // Tasks this user created
+  tasks     Task[]       @relation("CreatedTasks")
+
+  // Tasks assigned directly to this user
+  assigned  Task[]       @relation("AssignedTasks")
+
+  // Team members this user added
+  members   TeamMember[]
+}
+
 model TeamMember {
-  id       Int      @id @default(autoincrement())
-  name     String
-  email    String   @unique
-  role     String
-  joinDate DateTime @default(now())
-  tasks    Task[]   @relation("TeamMemberTasks")
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  role      String
+  joinDate  DateTime @default(now())
+
+  owner     User     @relation(fields: [ownerId], references: [id])
+  ownerId   Int
+
+  // Tasks assigned to this team member
+  tasks     Task[]   @relation("TeamMemberTasks")
 }
 
 model Task {
-  id          Int         @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   title       String
   description String?
   dueDate     DateTime?
   priority    String
-  status      String      @default("pending")
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+
+  // Who created the task
+  createdBy   User   @relation("CreatedTasks", fields: [createdById], references: [id])
+  createdById Int
+
+  // If assigned directly to a user
+  assignee    User?  @relation("AssignedTasks", fields: [assigneeId], references: [id])
   assigneeId  Int?
-  createdAt   DateTime    @default(now())
-  assignee    TeamMember? @relation("TeamMemberTasks", fields: [assigneeId], references: [id])
+
+  // If assigned to a team member
+  teamMember  TeamMember? @relation("TeamMemberTasks", fields: [teamMemberId], references: [id])
+  teamMemberId Int?
 }
