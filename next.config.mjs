@@ -11,12 +11,10 @@ const nextConfig = {
   },
   output: 'standalone',
   experimental: {
-    // Enable caching features
-    enableUndici: true,
     serverComponentsExternalPackages: ['@prisma/client', 'bcrypt'],
   },
   webpack: (config) => {
-    config.resolve.alias['@'] = '/Users/mengkheykhorn/Desktop/task-manager (4) 6';
+    config.resolve.alias['@'] = process.cwd();
     return config;
   },
 };

@@ -10,7 +10,7 @@
 // }
 
 import { getServerSession } from "next-auth";
-import { authOptions } from "./api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Dashboard from "../components/Dashboard";
 import Layout from "../components/Layout";
