@@ -1,13 +1,11 @@
 // app/auth/signin/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
-import { signIn, useSession } from "next-auth/react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function SignInPage() {
-  const { data: session } = useSession();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -15,29 +13,31 @@ export default function SignInPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Redirect if user is already signed in
-  useEffect(() => {
-    if (session) {
-      router.push("/"); // redirect to dashboard/root page
-    }
-  }, [session, router]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    const res = await signIn("credentials", {
-      redirect: false,
-      email,
-      password,
-    });
+    try {
+      const resp = await fetch("/api/auth/signin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (res?.error) {
-      setError(res.error);
+      const json = await resp.json().catch(() => ({}));
+
+      if (!resp.ok) {
+        setError(json.message ?? json.status ?? "Sign in failed");
+        setLoading(false);
+        return;
+      }
+
+      // success
+      router.push("/");
+    } catch (e) {
+      setError((e as Error).message ?? "Sign in failed");
       setLoading(false);
-    } else {
-      router.push("/"); // redirect after successful sign-in
     }
   };
 
@@ -77,7 +77,7 @@ export default function SignInPage() {
         </button>
 
         <p className="text-sm text-gray-500 text-center">
-          Don't have an account?{" "}
+          Don't have an account? {" "}
           <Link href="/auth/signup" className="text-blue-600 hover:underline">
             Sign Up
           </Link>

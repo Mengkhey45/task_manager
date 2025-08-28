@@ -3,11 +3,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
 import Link from "next/link";
 
 export default function SignUpPage() {
-  const [name, setName] = useState("");
+  const [firstname, setFirstname] = useState("");
+  const [lastname, setLastname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,30 +20,27 @@ export default function SignUpPage() {
     setError("");
 
     try {
-      // 1. Create account
+      // Build FormData to match server action expecting FormData
+      const formData = new FormData();
+      formData.append("firstname", firstname);
+      formData.append("lastname", lastname);
+      formData.append("email", email);
+      formData.append("password", password);
+
       const res = await fetch("/api/auth/signup", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: formData,
       });
 
       const data = await res.json();
+      if (!res.ok || data.status !== "success") {
+        throw new Error(data.status || data.error || "Sign up failed");
+      }
 
-      if (!res.ok) throw new Error(data.error || "Sign up failed");
-
-      // 2. Automatically sign in after successful signup
-      const loginRes = await signIn("credentials", {
-        redirect: false,
-        email,
-        password,
-      });
-
-      if (loginRes?.error) throw new Error(loginRes.error);
-
-      // 3. Redirect to dashboard/root page
+      // Redirect on success
       router.push("/");
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message ?? String(err));
       setLoading(false);
     }
   };
@@ -57,14 +54,24 @@ export default function SignUpPage() {
         <h2 className="text-2xl font-bold text-center">Sign Up</h2>
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
-        <input
-          type="text"
-          placeholder="Full Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full border rounded-lg px-3 py-2"
-          required
-        />
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            type="text"
+            placeholder="First Name"
+            value={firstname}
+            onChange={(e) => setFirstname(e.target.value)}
+            className="w-full border rounded-lg px-3 py-2"
+            required
+          />
+          <input
+            type="text"
+            placeholder="Last Name"
+            value={lastname}
+            onChange={(e) => setLastname(e.target.value)}
+            className="w-full border rounded-lg px-3 py-2"
+            required
+          />
+        </div>
         <input
           type="email"
           placeholder="Email"

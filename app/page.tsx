@@ -1,25 +1,18 @@
-// import Dashboard from "../components/Dashboard"
-// import Layout from "../components/Layout"
 
-// export default function Page() {
-//   return (
-//     <Layout>
-//       <Dashboard />
-//     </Layout>
-//   )
-// }
 
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Dashboard from "../components/Dashboard";
 import Layout from "../components/Layout";
+import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function Page() {
-  const session = await getServerSession(authOptions);
+  const supabase = createClient(cookies());
+  const { data } = await supabase.auth.getUser();
+  const user = (data as any)?.user ?? null;
 
-  if (!session) {
-    redirect("/auth/signin"); // Change to /signin if you don’t move folders
+  if (!user) {
+    redirect("/auth/signin");
   }
 
   return (

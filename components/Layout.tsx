@@ -217,7 +217,11 @@ export default function Layout({ children }: LayoutProps) {
     return <div className="flex items-center justify-center h-screen text-gray-500 text-lg">Loading...</div>
   }
 
-  if (!session) return <>{children}</>
+  // NOTE: layout should render the application chrome regardless of whether
+  // the client-side next-auth session has hydrated. Server-side routes (e.g.
+  // `app/page.tsx`) already perform auth redirects using Supabase. Returning
+  // early here caused the header/sidebar to disappear for authenticated users
+  // when the client session wasn't available yet.
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 font-sans">
@@ -257,13 +261,13 @@ export default function Layout({ children }: LayoutProps) {
           </button>
           <div className="flex items-center space-x-2">
             <ProfileAvatar
-              src={session.user?.image || "https://randomuser.me/api/portraits/men/32.jpg"}
+              src={session?.user?.image ?? "https://randomuser.me/api/portraits/men/32.jpg"}
               alt="Profile"
-              fallback={session.user?.name?.charAt(0).toUpperCase() || "U"}
+              fallback={(session?.user?.name?.charAt(0) ?? "U").toUpperCase()}
             />
             <div className="text-right">
-              <div className="font-semibold text-sm text-gray-800">{session.user?.name}</div>
-              <div className="text-xs text-gray-400">{session.user?.email}</div>
+              <div className="font-semibold text-sm text-gray-800">{session?.user?.name ?? "Guest"}</div>
+              <div className="text-xs text-gray-400">{session?.user?.email ?? ""}</div>
             </div>
           </div>
         </div>
@@ -274,11 +278,11 @@ export default function Layout({ children }: LayoutProps) {
         {/* Sidebar */}
         <aside className="w-72 bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center min-h-[90vh] relative">
           <ProfileAvatar
-            src={session.user?.image || "https://randomuser.me/api/portraits/men/32.jpg"}
+            src={session?.user?.image ?? "https://randomuser.me/api/portraits/men/32.jpg"}
             alt="Profile"
-            fallback={session.user?.name?.charAt(0).toUpperCase() || "U"}
+            fallback={(session?.user?.name?.charAt(0) ?? "U").toUpperCase()}
           />
-          <div className="font-bold text-lg text-gray-800 mt-2 mb-1">{session.user?.name}</div>
+          <div className="font-bold text-lg text-gray-800 mt-2 mb-1">{session?.user?.name ?? "Guest"}</div>
           <div className="text-xs text-gray-500 mb-4 text-center">Manage your tasks efficiently</div>
 
           <nav className="w-full flex-1 space-y-1 mt-2">
