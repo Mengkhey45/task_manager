@@ -10,6 +10,10 @@ const nextConfig = {
     unoptimized: true,
   },
   output: 'standalone',
+  webpack: (config) => {
+    config.resolve.alias['@'] = '/';
+    return config;
+  },
 };
 
 export default nextConfig;
