@@ -10,8 +10,12 @@ const nextConfig = {
     unoptimized: true,
   },
   output: 'standalone',
+  experimental: {
+    // Enable caching features
+    enableUndici: true,
+  },
   webpack: (config) => {
-    config.resolve.alias['@'] = '/';
+    config.resolve.alias['@'] = '/Users/mengkheykhorn/Desktop/task-manager (4) 6';
     return config;
   },
 };
