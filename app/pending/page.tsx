@@ -560,7 +560,6 @@ export default function PendingTasks() {
   const [priorityFilter, setPriorityFilter] = useState<string>("All Priorities");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("All Assignees");
 
-  const { data: session, status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
