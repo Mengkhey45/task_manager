@@ -28,7 +28,7 @@ export async function POST(req: Request) {
       html: `
         <h2>Hello ${name},</h2>
         <p>You have been invited to join TaskFlow as a <strong>${role}</strong>.</p>
-        <p>Click <a href="https://yourapp.com">here</a> to join.</p>
+        <p>Click <a href="https://task-manager-wine-delta.vercel.app">here</a> to join.</p>
         <p>Welcome aboard!</p>
       `,
     });

@@ -7,6 +7,7 @@ import { prisma } from "../../../lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import nodemailer from "nodemailer";
+import { getTeamMembersForUser } from "../../../lib/data/team";
 
 export const runtime = "nodejs";
 
@@ -42,22 +43,8 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  try {
-    const ownerId = user.id;
-
-    const members = await prisma.teamMember.findMany({
-      where: { ownerId }, // only members owned by this user
-      include: { tasks: true }, // include their tasks
-    });
-
-    return NextResponse.json(members);
-  } catch (err: any) {
-    console.error("GET /api/team error:", err);
-    return NextResponse.json(
-      { error: "Failed to fetch team members", details: err.message },
-      { status: 500 }
-    );
-  }
+  const members = await getTeamMembersForUser(user);
+  return NextResponse.json(members);
 }
 
 // POST create new team member
